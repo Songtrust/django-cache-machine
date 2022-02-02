@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from django.conf import settings
 from django.utils import encoding
 from jinja2 import nodes
@@ -20,7 +18,7 @@ class FragmentCacheExtension(Extension):
 
     Derived from the jinja2 documentation example.
     """
-    tags = set(['cache'])
+    tags = {'cache'}
 
     def __init__(self, environment):
         super(FragmentCacheExtension, self).__init__(environment)

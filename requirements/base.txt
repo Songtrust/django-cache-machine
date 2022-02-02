@@ -4,7 +4,6 @@ django-nose
 django-redis
 jinja2
 redis
-flake8
 coverage
 psycopg2
-python-memcached>=1.58
+pymemcache

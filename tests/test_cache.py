@@ -1,8 +1,6 @@
-from __future__ import unicode_literals
 import jinja2
 import logging
 import pickle
-import sys
 import unittest
 
 from django.conf import settings
@@ -14,11 +12,7 @@ from caching import base, invalidation, config
 
 from .testapp.models import Addon, User
 
-
-if sys.version_info >= (3, ):
-    from unittest import mock
-else:
-    import mock
+from unittest import mock
 
 
 cache = invalidation.cache
@@ -47,7 +41,7 @@ class CachingTestCase(TestCase):
         a = Addon.objects.get(id=1)
         self.assertEqual(a.cache_key, 'o:testapp.addon:1:default')
 
-        keys = set((a.cache_key, a.author1.cache_key, a.author2.cache_key))
+        keys = {a.cache_key, a.author1.cache_key, a.author2.cache_key}
         self.assertEqual(set(a._cache_keys()), keys)
 
     def test_cache(self):
@@ -407,9 +401,9 @@ class CachingTestCase(TestCase):
         self.assertEqual(a.id, 1)
 
     @unittest.skipUnless(
-        any(['memcache' in c['BACKEND'] for c in settings.CACHES.values()]),
+        any(['pymemcache' in c['BACKEND'] for c in settings.CACHES.values()]),
         'This test requires that Django use memcache')
-    @mock.patch('memcache.Client.set')
+    @mock.patch('pymemcache.Client.set')
     def test_infinite_timeout(self, mock_set):
         """
         Test that memcached infinite timeouts work with all Django versions.
@@ -555,7 +549,7 @@ class CachingTestCase(TestCase):
 # use TransactionTestCase so that ['TEST']['MIRROR'] setting works
 # see https://code.djangoproject.com/ticket/23718
 class MultiDbTestCase(TransactionTestCase):
-    multi_db = True
+    databases = '__all__'
     fixtures = ['tests/testapp/fixtures/testapp/test_cache.json']
     extra_apps = ['tests.testapp']
 

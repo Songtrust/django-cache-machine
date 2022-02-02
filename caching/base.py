@@ -1,40 +1,22 @@
-from __future__ import unicode_literals
-
 import functools
 import logging
 
 import django
 from django.core.cache.backends.base import DEFAULT_TIMEOUT
+from django.core.exceptions import EmptyResultSet
 from django.db import models
 from django.db.models import signals
-from django.db.models.sql import EmptyResultSet, query
+from django.db.models.query import ModelIterable
 from django.utils import encoding
 
 from caching import config
 from caching.invalidation import byid, cache, flush_key, invalidator, make_key
 
-try:
-    # ModelIterable is defined in Django 1.9+, and if it's present, we use it
-    # iterate over our results.
-    from django.db.models.query import ModelIterable
-except ImportError:
-    # If not, define a Django 1.8-compatible stub we can use instead.
-    class ModelIterable(object):
-        def __init__(self, queryset):
-            self.queryset = queryset
-
-        def __iter__(self):
-            return super(CachingQuerySet, self.queryset).iterator()
 
 log = logging.getLogger('caching')
 
 
 class CachingManager(models.Manager):
-
-    # This option removed in Django 2.0
-    # Tell Django to use this manager when resolving foreign keys. (Django < 2.0)
-    use_for_related_fields = True
-
     def get_queryset(self):
         return CachingQuerySet(self.model, using=self._db)
 
@@ -118,7 +100,7 @@ class CachingModelIterable(ModelIterable):
         # Try to fetch from the cache.
         try:
             query_key = self.query_key()
-        except query.EmptyResultSet:
+        except EmptyResultSet:
             return
 
         cached = cache.get(query_key)
@@ -230,7 +212,7 @@ class CachingQuerySet(models.query.QuerySet):
         super_count = super(CachingQuerySet, self).count
         try:
             query_string = 'count:%s' % self.query_key()
-        except query.EmptyResultSet:
+        except EmptyResultSet:
             return 0
         if self.timeout == config.NO_CACHE or config.TIMEOUT == config.NO_CACHE:
             return super_count()
@@ -332,7 +314,7 @@ class CachingRawQuerySet(models.query.RawQuerySet):
                 yield obj
 
     def query_key(self):
-        return self.raw_query % tuple(self.params)
+        return self.raw_query % (tuple(self.params) if self.params else ())
 
 
 def _function_cache_key(key):
